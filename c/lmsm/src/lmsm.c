@@ -8,18 +8,24 @@
 //======================================================
 //  Instruction Implementation
 //======================================================
-void lmsm_i_branch_unconditional();
-void lmsm_i_push();
+//void lmsm_i_branch_unconditional();
+//void lmsm_i_push();
+void lmsm_i_pop();
+void lmsm_exec_instruction();
 void lmsm_i_call(lmsm *our_little_machine) {
-    lmsm_stack *current_accumulator  = our_little_machine->accumulator;
-    lmsm_i_branch_unconditional(our_little_machine, current_accumulator->next);
-    our_little_machine->accumulator = our_little_machine->accumulator->next;
-    //our_little_machine->call_stack->next = current_accumulator->next;
-    //lmsm_i_branch_unconditional(our_little_machine, our_little_machine->current_instruction->value);
+    lmsm *currentPGMCounter  = our_little_machine->program_counter;
+    lmsm *currentVal  = our_little_machine->accumulator->value;
 
+    lmsm_i_pop(our_little_machine);
+    our_little_machine->call_stack->value = currentPGMCounter;
+    our_little_machine->program_counter = currentVal;
 }
 
 void lmsm_i_return(lmsm *our_little_machine) {
+    our_little_machine->program_counter = our_little_machine->call_stack->value;
+    our_little_machine->call_stack->value = our_little_machine->call_stack->next;
+
+
 }
 
 void lmsm_i_push(lmsm *our_little_machine) {
@@ -104,19 +110,15 @@ void lmsm_i_ssub(lmsm *our_little_machine) {
 
     new->value = second->value - top->value; // doing copmutation to get value of new element
     new->next = second->next; // we are going to be getting rid of top and second because we are just using those
-// to do a computation. If this value is replacing top and second, and new has to have a next, then we set the next of new
-// equal to next of second if new is going to be on top of the stack now
     if(new->value <= -999){
         new->value = -999;
     }
     if(new->value >= 999){
         new->value = 999;
     }
-    our_little_machine->accumulator = new; // when we do this, its like popping top and second off because now next is in the acc
-// and top and second are not
+    our_little_machine->accumulator = new;
 
-    free(top); // these two lines are for garbage collection, we dont want to waste memory on preserving two values
-// that we just popped off the stack so we delete them
+    free(top);
     free(second);
 }
 
@@ -128,13 +130,13 @@ void lmsm_i_smax(lmsm *our_little_machine) {
     lmsm_i_pop(our_little_machine);
     lmsm_stack *second = our_little_machine->accumulator;
     lmsm_i_pop(our_little_machine);
-    lmsm_stack *top = our_little_machine->accumulator; // top element on the stack
+    lmsm_stack *top = our_little_machine->accumulator;
     int max = first->value;
     if (max < second->value){
         max = second->value;
     }
     our_little_machine->accumulator->value = max;
-    //our_little_machine->accumulator->next = NULL;
+
 }
 
 void lmsm_i_smin(lmsm *our_little_machine) {
@@ -157,25 +159,20 @@ void lmsm_i_smul(lmsm *our_little_machine) {
     if (!check_stack(our_little_machine)) {
         return;
     }
-    lmsm_stack *top = our_little_machine->accumulator; // top element on the stack
-    lmsm_stack *second = top->next; // second element on the stack
-    lmsm_stack *new = malloc(sizeof(lmsm_stack)); // this is a new stack entry that will contain the answer of the compution
-
-    new->value = second->value * top->value; // doing copmutation to get value of new element
-    new->next = second->next; // we are going to be getting rid of top and second because we are just using those
-// to do a computation. If this value is replacing top and second, and new has to have a next, then we set the next of new
-// equal to next of second if new is going to be on top of the stack now
+    lmsm_stack *top = our_little_machine->accumulator;
+    lmsm_stack *second = top->next;
+    lmsm_stack *new = malloc(sizeof(lmsm_stack));
+    new->value = second->value * top->value;
+    new->next = second->next;
     if(new->value <= -999){
         new->value = -999;
     }
     if(new->value >= 999){
         new->value = 999;
     }
-    our_little_machine->accumulator = new; // when we do this, its like popping top and second off because now next is in the acc
-// and top and second are not
+    our_little_machine->accumulator = new;
 
-    free(top); // these two lines are for garbage collection, we dont want to waste memory on preserving two values
-// that we just popped off the stack so we delete them
+    free(top);
     free(second);
 }
 
@@ -183,25 +180,20 @@ void lmsm_i_sdiv(lmsm *our_little_machine) {
     if (!check_stack(our_little_machine)) {
         return;
     }
-    lmsm_stack *top = our_little_machine->accumulator; // top element on the stack
-    lmsm_stack *second = top->next; // second element on the stack
-    lmsm_stack *new = malloc(sizeof(lmsm_stack)); // this is a new stack entry that will contain the answer of the compution
-
-    new->value = second->value / top->value; // doing copmutation to get value of new element
-    new->next = second->next; // we are going to be getting rid of top and second because we are just using those
-// to do a computation. If this value is replacing top and second, and new has to have a next, then we set the next of new
-// equal to next of second if new is going to be on top of the stack now
+    lmsm_stack *top = our_little_machine->accumulator;
+    lmsm_stack *second = top->next;
+    lmsm_stack *new = malloc(sizeof(lmsm_stack));
+    new->value = second->value / top->value;
+    new->next = second->next;
     if(new->value <= -999){
         new->value = -999;
     }
     if(new->value >= 999){
         new->value = 999;
     }
-    our_little_machine->accumulator = new; // when we do this, its like popping top and second off because now next is in the acc
-// and top and second are not
+    our_little_machine->accumulator = new;
 
-    free(top); // these two lines are for garbage collection, we dont want to waste memory on preserving two values
-// that we just popped off the stack so we delete them
+    free(top);
     free(second);
 }
 
@@ -271,6 +263,11 @@ void lmsm_cap_accumulator_value(lmsm *our_little_machine){
 }
 
 void lmsm_step(lmsm *our_little_machine) {
+    our_little_machine->program_counter ++;
+    our_little_machine->current_instruction = our_little_machine->memory[0];
+    lmsm_exec_instruction(our_little_machine, our_little_machine->memory[0]);
+
+
 }
 
 //======================================================
@@ -348,6 +345,9 @@ lmsm_i_push(our_little_machine);
     }
     else if (instruction == 910){
         lmsm_i_call(our_little_machine);
+    }
+    else if (instruction == 911){
+        lmsm_i_return(our_little_machine);
     }
     else if (instruction == 000) {
         lmsm_i_halt(our_little_machine);
