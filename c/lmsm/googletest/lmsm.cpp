@@ -394,6 +394,7 @@ TEST(lmsm_machine_suite,step_steps_to_the_next_instruction_and_executes_current)
 TEST(lmsm_machine_suite,step_does_not_step_to_the_next_instruction_and_execute_if_machine_is_halted){
 
     lmsm *the_machine = lmsm_create();
+    lmsm_i_push()
 
     the_machine->accumulator->value = 10;
     the_machine->program_counter = 0;
