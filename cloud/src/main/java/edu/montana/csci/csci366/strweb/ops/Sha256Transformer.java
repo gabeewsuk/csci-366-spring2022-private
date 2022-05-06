@@ -1,5 +1,8 @@
 package edu.montana.csci.csci366.strweb.ops;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -19,9 +22,60 @@ public class Sha256Transformer {
     }
 
     public String toSha256Hashes() {
-        //TODO - this method should create a series of Runnables and use the executor to do all
-        //       word counts in parallel
-      return "";
+        CountDownLatch latch = new CountDownLatch(_lines.length);
+        for(int i = 0; i<_lines.length; i++){
+            Sha256Computer sha256Computer = new Sha256Computer(i, latch);
+            //we use the executor here to reduce response time because we don't have to create a thread during task processing
+            //we simply use the api to grab a thread from the threadpool and the thread will execute the task
+            //FASTER
+            executor.execute(sha256Computer);
+        }
+
+        try{
+            latch.await();
+        }
+        catch (InterruptedException e){
+            throw new RuntimeException(e);
+        }
+        return String.join("\n", _lines);
+
+    }
+    class Sha256Computer implements Runnable{
+        private final int index;
+        private final CountDownLatch latch;
+
+        Sha256Computer(int index, CountDownLatch latch) {
+            this.index = index;
+            this.latch = latch;
+        }
+        @Override
+        public void run(){
+            MessageDigest digest = null;
+            try{
+                String originalString = _lines[index];
+                digest = MessageDigest.getInstance("SHA-256");
+                byte[] encodedhash = digest.digest(
+                        originalString.getBytes(StandardCharsets.UTF_8)
+                );
+                _lines[index] = bytesToHex(encodedhash);
+                latch.countDown();
+
+            }catch(NoSuchAlgorithmException e){
+                throw new RuntimeException(e);
+            }
+
+        }
+        private String bytesToHex(byte[] hash){
+            StringBuilder hexString = new StringBuilder(2*hash.length);
+            for (int i = 0; i < hash.length; i++){
+                String hex = Integer.toHexString(0xff & hash[i]);
+                if(hex.length() == 1){
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        }
     }
 
 }

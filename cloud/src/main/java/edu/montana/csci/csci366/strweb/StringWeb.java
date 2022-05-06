@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -58,13 +60,60 @@ public class StringWeb {
                     // Parse HTTP Headers
                     Map<String, String> headers = new HashMap<>();
                     // TODO - parse request headers
+                    //here we are parsing all of the http headers
+                    String line;
+                    //we have a do while loop so that we can go until there are no more headers to parse
+                    //http have syntax of name:value so we have to clean it up.
+                    do {
+                        line = inputReader.readLine();
+                        if(!line.isEmpty()){
+                            //splitting the line based on thr first colon, we have it set at two because the value can have colons and we want to ignore them.
+                            String[] split = line.split(":", 2);
+                            //index 0 is key and index 1 is value we are putting headers into a map so that we can access them easily later
+                            //we use substring to drop the space
+                            headers.put(split[0], split[1].substring(1));
+
+
+                        }
+
+                    }while(!line.isEmpty());
 
                     LOGGER.info("Headers : " + headers);
 
                     String strings = "";
-                    // TODO - parse request body
+                    //creating a conditional to see if the method is a post
+                    if("POST".equals(method)){
+                        //creating a map to store the data from the post request
+                        Map<String, String> parameters = new HashMap<>();
+                        //checking to see if our headers map contains "Content-Length"
+                        //if it is a post it will likely contain a body so we need to check the byte length
+                        if(headers.containsKey("Content-Length")){
+                            //parsing content length
+                            int length = Integer.parseInt(headers.get("Content-Length"));
+                            char[] buffer = new char[length];
+                            //reading char data into a buffer
+                            inputReader.read(buffer, 0, length);
+                            //creating a string from the char buffer
+                            String strBody = new String(buffer);
+                            //we split on & because this seperates the parametrs
+                            for (String param : strBody.split("&")){
+                                //we split on equals because this seperates name from value
+                                String[] split = param.split("=",2);
+                                String name = split[0];
+                                //turns the gobbledigoop into a new line b new line c new line
+                                String value = URLDecoder.decode(split[1], StandardCharsets.UTF_8);
+                                //map parameters out
+                                parameters.put(name, value);
+                            }
+                        }
+                        //send it back in as http so that we see it stay present on the text box
+                        strings = parameters.get("strings");
+                        //check what the operation is and send it to the do operation function
+                        if (parameters.containsKey("op")){
+                            strings = doOperation(parameters.get("op"), strings);
+                        }
 
-                    // build a response
+                    }
                     if ("text/plain".equals(headers.get("Content-Type"))) {
                         renderTextPlain(response, strings);
                     } else {
@@ -145,7 +194,7 @@ public class StringWeb {
 
     private void renderResponseHeaders(StringBuilder response, String responseVals) {
         response.append("HTTP/1.1 ").append(responseVals).append("\n")
-                .append("MSU WebServer : 1.0\n")
+                .append("MSU-WebServer : 1.0\n")
                 .append("Date : ").append(new Date()).append("\n").append("\n");
     }
 
